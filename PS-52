@@ -1,0 +1,107 @@
+--- В пакет UTIL додана процедура
+PROCEDURE add_employee(
+        p_first_name      IN VARCHAR2,
+        p_last_name       IN VARCHAR2,
+        p_email           IN VARCHAR2,
+        p_phone_number    IN VARCHAR2,
+        p_hire_date       IN DATE DEFAULT trunc(sysdate, 'dd'),
+        p_job_id          IN VARCHAR2,
+        p_salary          IN NUMBER,
+        p_commission_pct  IN VARCHAR2 DEFAULT NULL,
+        p_manager_id      IN NUMBER DEFAULT 100,
+        p_department_id   IN NUMBER);
+
+--- В UTIL Body додана процедура
+PROCEDURE add_employee(
+        p_first_name      IN VARCHAR2,
+        p_last_name       IN VARCHAR2,
+        p_email           IN VARCHAR2,
+        p_phone_number    IN VARCHAR2,
+        p_hire_date       IN DATE DEFAULT trunc(sysdate, 'dd'),
+        p_job_id          IN VARCHAR2,
+        p_salary          IN NUMBER,
+        p_commission_pct  IN VARCHAR2 DEFAULT NULL,
+        p_manager_id      IN NUMBER DEFAULT 100,
+        p_department_id   IN NUMBER
+    ) IS
+        v_employee_id     NUMBER;
+        v_min_salary      NUMBER;
+        v_max_salary      NUMBER;
+        v_day_of_week     NUMBER;
+        v_current_time    VARCHAR2(5);
+
+    BEGIN
+        -- Викликати процедуру log_util.log_start
+        log_util.log_start(p_proc_name => 'add_employee');
+
+        -- Перевірити, чи існує переданий код посади (P_JOB_ID) в таблиці JOBS
+        BEGIN
+            SELECT MIN_SALARY, MAX_SALARY INTO v_min_salary, v_max_salary
+            FROM JOBS
+            WHERE JOB_ID = p_job_id;
+
+            -- Якщо не знайдено, викликати помилку
+            IF SQL%NOTFOUND THEN
+                RAISE_APPLICATION_ERROR(-20001, 'Введено неіснуючий код посади');
+            END IF;
+
+        EXCEPTION
+            WHEN NO_DATA_FOUND THEN
+                RAISE_APPLICATION_ERROR(-20001, 'Введено неіснуючий код посади');
+        END;
+
+        -- Перевірити, чи існує переданий ідентифікатор відділу (P_DEPARTMENT_ID) в таблиці DEPARTMENTS
+        BEGIN
+            SELECT 1 INTO v_employee_id
+            FROM DEPARTMENTS
+            WHERE DEPARTMENT_ID = p_department_id;
+
+            -- Якщо не знайдено, викликати помилку
+            IF SQL%NOTFOUND THEN
+                RAISE_APPLICATION_ERROR(-20001, 'Введено неіснуючий ідентифікатор відділу');
+            END IF;
+
+        EXCEPTION
+            WHEN NO_DATA_FOUND THEN
+                RAISE_APPLICATION_ERROR(-20001, 'Введено неіснуючий ідентифікатор відділу');
+        END;
+
+        -- Перевірити передану заробітну плату на коректність за кодом посади (P_JOB_ID)
+        IF p_salary < v_min_salary OR p_salary > v_max_salary THEN
+            RAISE_APPLICATION_ERROR(-20001, 'Введено неприпустиму заробітну плату для даного коду посади');
+        END IF;
+
+        -- Перевірити день і час при вставці
+        v_day_of_week := TO_NUMBER(TO_CHAR(p_hire_date, 'D'));
+        v_current_time := TO_CHAR(SYSDATE, 'HH24:MI');
+
+        IF v_day_of_week IN (7, 1) OR (v_current_time < '08:00' OR v_current_time > '18:00') THEN
+            RAISE_APPLICATION_ERROR(-20001, 'Ви можете додавати нового співробітника лише в робочий час');
+        END IF;
+
+        -- Вставка нового співробітника
+        BEGIN
+            SELECT MAX(employee_id) + 1 INTO v_employee_id FROM employees;
+
+            INSERT INTO employees (
+                employee_id, first_name, last_name, email, phone_number, hire_date,
+                job_id, salary, commission_pct, manager_id, department_id
+            ) VALUES (
+                v_employee_id, p_first_name, p_last_name, p_email, p_phone_number, p_hire_date,
+                p_job_id, p_salary, p_commission_pct, p_manager_id, p_department_id
+            );
+
+            -- Видача повідомлення про успішне додавання
+            DBMS_OUTPUT.PUT_LINE('Співробітник ' || p_first_name || ', ' || p_last_name || ', ' || p_job_id || ', ' || p_department_id || ' успішно додано до системи');
+            
+        EXCEPTION
+            WHEN OTHERS THEN
+                -- Викликати процедуру log_util.log_error у випадку помилки
+                log_util.log_error(p_proc_name => 'add_employee', p_sqlerrm => SQLERRM);
+                RAISE;  -- Перепідняти виняток для передачі повідомлення про помилку
+        END;
+
+        -- Викликати процедуру log_util.log_finish
+        log_util.log_finish(p_proc_name => 'add_employee');
+
+    END add_employee;
