@@ -37,4 +37,6 @@ CREATE OR REPLACE PACKAGE UTIL IS
                            p_manager_id      IN NUMBER DEFAULT 100,
                            p_department_id   IN NUMBER);
 
+    PROCEDURE fire_an_employee(p_employee_id IN NUMBER); 
+
 END util;
