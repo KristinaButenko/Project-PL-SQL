@@ -222,5 +222,56 @@ PROCEDURE add_employee(
 
     END add_employee;
 
+
+    PROCEDURE fire_an_employee(p_employee_id IN NUMBER) IS
+        v_first_name   VARCHAR2(50);
+        v_last_name    VARCHAR2(50);
+        v_job_id       VARCHAR2(10);
+        v_department_id NUMBER;
+        
+    BEGIN
+        -- Лог початку
+        log_util.log_start('fire_an_employee');
+
+        -- Перевірка, чи існує співробітник з переданим ідентифікатором
+        BEGIN
+            SELECT first_name, last_name, job_id, department_id
+            INTO v_first_name, v_last_name, v_job_id, v_department_id
+            FROM employees
+            WHERE employee_id = p_employee_id;
+            
+        EXCEPTION
+            WHEN NO_DATA_FOUND THEN
+                RAISE_APPLICATION_ERROR(-20001, 'Переданий співробітник не існує');
+        END;
+
+        -- Перевірка робочого часу
+        check_working_hours;
+
+        -- Видалення співробітника 
+        BEGIN
+            DELETE FROM employees
+            WHERE employee_id = p_employee_id;
+
+            -- Запис в історичну таблицю звільнених співробітників
+            INSERT INTO employees_history (
+                employee_id, first_name, last_name, job_id, department_id, fired_date
+            ) VALUES (
+                p_employee_id, v_first_name, v_last_name, v_job_id, v_department_id, SYSDATE
+            );
+
+            -- Повідомлення про успішне звільнення
+            DBMS_OUTPUT.PUT_LINE('Співробітник ' || v_first_name || ', ' || v_last_name ||
+                                 ', ' || v_job_id || ', ' || v_department_id || ' успішно звільнен.');
+        EXCEPTION
+            WHEN OTHERS THEN
+                log_util.log_error('fire_an_employee', SQLERRM);
+                RAISE;
+        END;
+
+        -- Лог завершення
+        log_util.log_finish('fire_an_employee');
+        
+    END fire_an_employee;
   
 END util;
