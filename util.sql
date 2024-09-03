@@ -39,4 +39,15 @@ CREATE OR REPLACE PACKAGE UTIL IS
 
     PROCEDURE fire_an_employee(p_employee_id IN NUMBER); 
 
+    PROCEDURE change_attribute_employee(p_employee_id   IN VARCHAR2,
+                                        p_first_name    IN VARCHAR2 DEFAULT NULL,
+                                        p_last_name     IN VARCHAR2 DEFAULT NULL,
+                                        p_email         IN VARCHAR2 DEFAULT NULL,
+                                        p_phone_number  IN VARCHAR2 DEFAULT NULL,
+                                        p_job_id        IN VARCHAR2 DEFAULT NULL,
+                                        p_salary        IN NUMBER   DEFAULT NULL,
+                                        p_commission_pct IN VARCHAR2 DEFAULT NULL,
+                                        p_manager_id    IN NUMBER   DEFAULT NULL,
+                                        p_department_id IN NUMBER   DEFAULT NULL);
+
 END util;
