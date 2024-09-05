@@ -369,5 +369,95 @@ PROCEDURE add_employee(
         RAISE;
         
     END change_attribute_employee;
-  
+
+  FUNCTION table_from_list(p_list_val  IN VARCHAR2,
+                           p_separator IN VARCHAR2 DEFAULT ',') RETURN tab_value_list PIPELINED IS
+
+    out_rec tab_value_list := tab_value_list();
+    l_cur   SYS_REFCURSOR;
+                  
+  BEGIN
+
+    OPEN l_cur FOR
+    
+        SELECT TRIM(REGEXP_SUBSTR(p_list_val, '[^'||p_separator||']+', 1, LEVEL)) AS cur_value
+        FROM dual
+        CONNECT BY LEVEL <= REGEXP_COUNT(p_list_val, p_separator) + 1;
+        
+        BEGIN
+        
+            LOOP
+                EXIT WHEN l_cur%NOTFOUND;
+                FETCH l_cur BULK COLLECT
+                    INTO out_rec;
+                    FOR i IN 1 .. out_rec.count LOOP
+                        PIPE ROW(out_rec(i));
+                    END LOOP;
+            END LOOP;
+            CLOSE l_cur;
+        
+        EXCEPTION 
+            WHEN OTHERS THEN
+                IF (l_cur%ISOPEN) THEN
+                    CLOSE l_cur;
+                    RAISE;
+                ELSE
+                   RAISE;
+                END IF;
+        END;
+
+  END table_from_list;
+ 
+    
+  FUNCTION get_currency(p_currency     IN VARCHAR2 DEFAULT 'USD',
+                        p_exchangedate IN DATE DEFAULT SYSDATE) RETURN tab_exchange PIPELINED IS
+
+    out_rec tab_exchange := tab_exchange();
+    l_cur   SYS_REFCURSOR;
+                  
+  BEGIN
+
+    OPEN l_cur FOR
+    
+        SELECT tt.r030, tt.txt, tt.rate, tt.cur, TO_DATE(tt.exchangedate, 'dd.mm.yyyy') AS exchangedate
+              FROM (SELECT get_needed_curr(p_valcode => p_currency,p_date => p_exchangedate) AS json_value FROM dual) 
+              CROSS JOIN json_table
+            (
+                json_value, '$[*]'
+                  COLUMNS
+                  (
+                    r030           NUMBER        PATH '$.r030',
+                    txt            VARCHAR2(100) PATH '$.txt',
+                    rate           NUMBER        PATH '$.rate',
+                    cur            VARCHAR2(100) PATH '$.cc',
+                    exchangedate   VARCHAR2(100) PATH '$.exchangedate'
+                  )
+            ) TT;
+        
+        BEGIN
+        
+            LOOP
+                EXIT WHEN l_cur%NOTFOUND;
+                FETCH l_cur BULK COLLECT
+                    INTO out_rec;
+                    FOR i IN 1 .. out_rec.count LOOP
+                        PIPE ROW(out_rec(i));
+                    END LOOP;
+            END LOOP;
+            CLOSE l_cur;
+        
+        EXCEPTION 
+            WHEN OTHERS THEN
+                IF (l_cur%ISOPEN) THEN
+                    CLOSE l_cur;
+                    RAISE;
+                ELSE
+                   RAISE;
+                END IF;
+        END;
+
+   END get_currency;  
+
+
+
 END util;
