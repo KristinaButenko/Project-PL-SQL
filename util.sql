@@ -39,6 +39,8 @@ CREATE OR REPLACE PACKAGE UTIL IS
 
     PROCEDURE fire_an_employee(p_employee_id IN NUMBER); 
 
+    PROCEDURE check_working_hours;
+
     PROCEDURE change_attribute_employee(p_employee_id   IN VARCHAR2,
                                         p_first_name    IN VARCHAR2 DEFAULT NULL,
                                         p_last_name     IN VARCHAR2 DEFAULT NULL,
