@@ -52,4 +52,10 @@ CREATE OR REPLACE PACKAGE UTIL IS
                                         p_manager_id    IN NUMBER   DEFAULT NULL,
                                         p_department_id IN NUMBER   DEFAULT NULL);
 
+    FUNCTION table_from_list(p_list_val   IN VARCHAR2,
+                              p_separator  IN VARCHAR2 DEFAULT ',') RETURN tab_value_list PIPELINED;      
+     
+    FUNCTION get_currency(p_currency     IN VARCHAR2 DEFAULT 'USD',
+                           p_exchangedate IN DATE DEFAULT SYSDATE) RETURN tab_exchange PIPELINED;
+
 END util;
