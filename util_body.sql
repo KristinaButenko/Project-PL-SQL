@@ -352,23 +352,21 @@ PROCEDURE add_employee(
         WHERE employee_id = p_employee_id;
     END IF;
 
-    -- Перевірка, чи був оновлен хоча б один рядок
     IF SQL%ROWCOUNT = 0 THEN
         RAISE_APPLICATION_ERROR(-20003, 'Немає оновлених записів для співробітника з employee_id = ' || p_employee_id);
     END IF;
 
     DBMS_OUTPUT.PUT_LINE('У співробітника ' || p_employee_id || ' успішно оновлені атрибути.');
+
     log_util.log_finish('change_attribute_employee');
 
-  EXCEPTION
-    WHEN NO_DATA_FOUND THEN
-        log_util.log_error('change_attribute_employee', 'Співробітника з employee_id = ' || p_employee_id || ' не знайдено.');
-        RAISE_APPLICATION_ERROR(-20002, 'Співробітника з employee_id = ' || p_employee_id || ' не знайдено.');
+EXCEPTION
     WHEN OTHERS THEN
         log_util.log_error('change_attribute_employee', SQLERRM);
         RAISE;
         
     END change_attribute_employee;
+
 
   FUNCTION table_from_list(p_list_val  IN VARCHAR2,
                            p_separator IN VARCHAR2 DEFAULT ',') RETURN tab_value_list PIPELINED IS
