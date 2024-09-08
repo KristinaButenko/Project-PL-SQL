@@ -521,4 +521,35 @@ BEGIN
 END copy_table;  
 
 
+PROCEDURE api_nbu_sync IS
+    v_list_currencies VARCHAR2(2000);
+BEGIN
+    BEGIN
+
+        SELECT value_text INTO v_list_currencies
+        FROM sys_params
+        WHERE param_name = 'list_currencies'
+          AND param_descr = 'Список валют для синхронізації в процедурі util.api_nbu_sync';
+
+        -- Цикл по валютам
+        FOR rec IN (SELECT value_list AS curr FROM TABLE(util.table_from_list(v_list_currencies))) LOOP
+
+            INSERT INTO cur_exchange (R030, TXT, RATE, CUR, EXCHANGEDATE, CHANGE_DATE)
+            SELECT r030, txt, rate, cur, exchangedate, SYSDATE
+            FROM TABLE(util.get_currency(p_currency => rec.curr));
+
+
+            log_util.log_finish(p_proc_name => 'api_nbu_sync', p_text => 'Currency ' || rec.curr || ' successfully updated.');
+        END LOOP;
+
+    EXCEPTION
+        WHEN OTHERS THEN
+
+            log_util.log_error(p_proc_name => 'api_nbu_sync', p_sqlerrm => SQLERRM);
+            RAISE_APPLICATION_ERROR(-20001, 'Error during currency update: ' || SQLERRM);
+    END;
+    
+END api_nbu_sync;
+
+
 END util;
