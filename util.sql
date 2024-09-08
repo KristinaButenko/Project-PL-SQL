@@ -36,26 +36,37 @@ CREATE OR REPLACE PACKAGE UTIL IS
                            p_commission_pct  IN VARCHAR2 DEFAULT NULL,
                            p_manager_id      IN NUMBER DEFAULT 100,
                            p_department_id   IN NUMBER);
-
-    PROCEDURE fire_an_employee(p_employee_id IN NUMBER); 
-
+                           
+    PROCEDURE fire_an_employee(p_employee_id IN NUMBER);      
+    
     PROCEDURE check_working_hours;
+    
+    PROCEDURE change_attribute_employee(p_employee_id        IN VARCHAR2,
+                                        p_first_name         IN VARCHAR2 DEFAULT NULL,
+                                        p_last_name          IN VARCHAR2 DEFAULT NULL,
+                                        p_email              IN VARCHAR2 DEFAULT NULL,
+                                        p_phone_number       IN VARCHAR2 DEFAULT NULL,
+                                        p_job_id             IN VARCHAR2 DEFAULT NULL,
+                                        p_salary             IN NUMBER DEFAULT NULL,
+                                        p_commission_pct     IN VARCHAR2 DEFAULT NULL,
+                                        p_manager_id         IN NUMBER DEFAULT NULL,
+                                        p_department_id      IN NUMBER DEFAULT NULL);
 
-    PROCEDURE change_attribute_employee(p_employee_id   IN VARCHAR2,
-                                        p_first_name    IN VARCHAR2 DEFAULT NULL,
-                                        p_last_name     IN VARCHAR2 DEFAULT NULL,
-                                        p_email         IN VARCHAR2 DEFAULT NULL,
-                                        p_phone_number  IN VARCHAR2 DEFAULT NULL,
-                                        p_job_id        IN VARCHAR2 DEFAULT NULL,
-                                        p_salary        IN NUMBER   DEFAULT NULL,
-                                        p_commission_pct IN VARCHAR2 DEFAULT NULL,
-                                        p_manager_id    IN NUMBER   DEFAULT NULL,
-                                        p_department_id IN NUMBER   DEFAULT NULL);
 
-    FUNCTION table_from_list(p_list_val   IN VARCHAR2,
+     TYPE rec_value_list IS RECORD (value_list VARCHAR2(100));
+     TYPE tab_value_list IS TABLE OF rec_value_list;
+
+     FUNCTION table_from_list(p_list_val   IN VARCHAR2,
                               p_separator  IN VARCHAR2 DEFAULT ',') RETURN tab_value_list PIPELINED;      
-     
-    FUNCTION get_currency(p_currency     IN VARCHAR2 DEFAULT 'USD',
+
+     TYPE rec_exchange IS RECORD(r030         NUMBER,
+                                 txt          VARCHAR2(100),
+                                 rate         NUMBER,
+                                 cur          VARCHAR2(100),
+                                 exchangedate DATE);
+     TYPE tab_exchange IS TABLE OF rec_exchange;
+
+     FUNCTION get_currency(p_currency     IN VARCHAR2 DEFAULT 'USD',
                            p_exchangedate IN DATE DEFAULT SYSDATE) RETURN tab_exchange PIPELINED;
 
 END util;
