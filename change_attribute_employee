@@ -1,0 +1,70 @@
+PROCEDURE          change_attribute_employee (
+        p_employee_id        IN NUMBER,
+        p_first_name         IN VARCHAR2 DEFAULT NULL,
+        p_last_name          IN VARCHAR2 DEFAULT NULL,
+        p_email              IN VARCHAR2 DEFAULT NULL,
+        p_phone_number       IN VARCHAR2 DEFAULT NULL,
+        p_job_id             IN VARCHAR2 DEFAULT NULL,
+        p_salary             IN NUMBER DEFAULT NULL,
+        p_commission_pct     IN NUMBER DEFAULT NULL,
+        p_manager_id         IN NUMBER DEFAULT NULL,
+        p_department_id      IN NUMBER DEFAULT NULL
+    ) IS
+
+    v_sql       VARCHAR2(1500);
+    v_columns   VARCHAR2(300) := 'first_name,last_name,email,phone_number,job_id,salary,commission_pct,manager_id,department_id';
+    v_set_value VARCHAR2(1000);
+    v_coma      VARCHAR2(1);
+    v_step      NUMBER := 0;
+
+  BEGIN
+    log_util.log_start('change_attribute_employee');
+
+    IF p_first_name IS NULL AND p_last_name IS NULL AND p_email IS NULL AND
+       p_phone_number IS NULL AND p_job_id IS NULL AND p_salary IS NULL AND
+       p_commission_pct IS NULL AND p_manager_id IS NULL AND p_department_id IS NULL THEN
+        RAISE_APPLICATION_ERROR(-20001, 'Не вказано жоден параметр для оновлення.');
+    END IF;
+    
+    FOR cc IN (SELECT column_name, column_val
+                FROM (SELECT value_list AS column_name,
+                             CASE
+                                 WHEN value_list = 'first_name' THEN p_first_name
+                                 WHEN value_list = 'last_name' THEN p_last_name
+                                 WHEN value_list = 'email' THEN p_email
+                                 WHEN value_list = 'phone_number' THEN p_phone_number
+                                 WHEN value_list = 'job_id' THEN p_job_id
+                                 WHEN value_list = 'salary' THEN to_char(p_salary)
+                                 WHEN value_list = 'commission_pct' THEN to_char(p_commission_pct)
+                                 WHEN value_list = 'manager_id' THEN to_char(p_manager_id)
+                                 WHEN value_list = 'department_id' THEN to_char(p_department_id)
+                             END AS column_val
+                      FROM TABLE(kristina.util.table_from_list(v_columns)))
+                WHERE column_val IS NOT NULL)LOOP
+
+      IF v_step > 0 AND v_coma IS NULL THEN
+        v_coma := ',';
+      END IF;
+      v_set_value := v_set_value || v_coma || cc.column_name ||' = ''' || cc.column_val ||''' ';
+      v_step := v_step +1;
+  
+    END LOOP;
+
+    v_sql := 'UPDATE kristina.employees SET ' || v_set_value || ' WHERE employee_id = ' || p_employee_id;
+
+    EXECUTE IMMEDIATE v_sql;
+
+    -- Перевірка, чи був оновлен хоча б один рядок
+    IF SQL%ROWCOUNT = 0 THEN
+        RAISE_APPLICATION_ERROR(-20003, 'Немає оновлених записів для співробітника з employee_id = ' || p_employee_id);
+    END IF;
+
+    DBMS_OUTPUT.PUT_LINE('У співробітника ' || p_employee_id || ' успішно оновлені атрибути.');
+    log_util.log_finish('change_attribute_employee');
+
+  EXCEPTION
+    WHEN OTHERS THEN
+        log_util.log_error('change_attribute_employee', SQLERRM);
+        RAISE;
+
+END change_attribute_employee;
