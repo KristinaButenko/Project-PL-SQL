@@ -69,4 +69,11 @@ CREATE OR REPLACE PACKAGE UTIL IS
      FUNCTION get_currency(p_currency     IN VARCHAR2 DEFAULT 'USD',
                            p_exchangedate IN DATE DEFAULT SYSDATE) RETURN tab_exchange PIPELINED;
 
+     PROCEDURE copy_table(p_source_scheme IN VARCHAR2,
+                          p_target_scheme IN VARCHAR2 DEFAULT USER,
+                          p_list_table    IN VARCHAR2,
+                          p_copy_data     IN BOOLEAN DEFAULT FALSE,
+                          po_result       OUT VARCHAR); 
+                                           
+
 END util;
