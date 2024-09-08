@@ -1,4 +1,4 @@
-CREATE OR REPLACE PACKAGE BODY UTIL IS
+create or replace PACKAGE BODY UTIL IS
 
 FUNCTION get_job_title(p_employee_id IN NUMBER) RETURN VARCHAR IS
     v_job_title jobs.job_title%TYPE;
@@ -223,6 +223,16 @@ PROCEDURE add_employee(
     END add_employee;
 
 
+-- Процедура для перевірки робочого часу
+    PROCEDURE check_working_hours IS
+    BEGIN
+        IF TO_CHAR(SYSDATE, 'DY', 'NLS_DATE_LANGUAGE = ''ENGLISH''') IN ('SAT', 'SUN') OR
+           TO_CHAR(SYSDATE, 'HH24MI') NOT BETWEEN '0800' AND '1800' THEN
+            RAISE_APPLICATION_ERROR(-20001, 'Ви можете видалити співробітника тільки в робочий час');
+        END IF;
+    END check_working_hours;
+
+
     PROCEDURE fire_an_employee(p_employee_id IN NUMBER) IS
         v_first_name   VARCHAR2(50);
         v_last_name    VARCHAR2(50);
@@ -273,8 +283,8 @@ PROCEDURE add_employee(
         log_util.log_finish('fire_an_employee');
         
     END fire_an_employee;
-
-
+  
+  
   PROCEDURE change_attribute_employee (
         p_employee_id        IN VARCHAR2,
         p_first_name         IN VARCHAR2 DEFAULT NULL,
@@ -366,97 +376,68 @@ EXCEPTION
         RAISE;
         
     END change_attribute_employee;
-
-
-  FUNCTION table_from_list(p_list_val  IN VARCHAR2,
-                           p_separator IN VARCHAR2 DEFAULT ',') RETURN tab_value_list PIPELINED IS
-
-    out_rec tab_value_list := tab_value_list();
-    l_cur   SYS_REFCURSOR;
-                  
-  BEGIN
-
-    OPEN l_cur FOR
     
-        SELECT TRIM(REGEXP_SUBSTR(p_list_val, '[^'||p_separator||']+', 1, LEVEL)) AS cur_value
-        FROM dual
-        CONNECT BY LEVEL <= REGEXP_COUNT(p_list_val, p_separator) + 1;
-        
-        BEGIN
-        
-            LOOP
-                EXIT WHEN l_cur%NOTFOUND;
-                FETCH l_cur BULK COLLECT
-                    INTO out_rec;
-                    FOR i IN 1 .. out_rec.count LOOP
-                        PIPE ROW(out_rec(i));
-                    END LOOP;
-            END LOOP;
-            CLOSE l_cur;
-        
-        EXCEPTION 
-            WHEN OTHERS THEN
-                IF (l_cur%ISOPEN) THEN
-                    CLOSE l_cur;
-                    RAISE;
-                ELSE
-                   RAISE;
-                END IF;
-        END;
-
-  END table_from_list;
  
+FUNCTION table_from_list(p_list_val IN VARCHAR2,
+                         p_separator IN VARCHAR2 DEFAULT ',') 
+RETURN tab_value_list PIPELINED IS
+    l_start     NUMBER := 1;
+    l_end       NUMBER;
+    l_value     VARCHAR2(100);
     
-  FUNCTION get_currency(p_currency     IN VARCHAR2 DEFAULT 'USD',
-                        p_exchangedate IN DATE DEFAULT SYSDATE) RETURN tab_exchange PIPELINED IS
+BEGIN
+    -- Loop through the list
+    LOOP
+        l_end := INSTR(p_list_val, p_separator, l_start);
+        IF l_end = 0 THEN
+            l_value := SUBSTR(p_list_val, l_start);
+            IF l_value IS NOT NULL THEN
+                PIPE ROW(rec_value_list(l_value));
+            END IF;
+            EXIT;
+        ELSE
+            l_value := SUBSTR(p_list_val, l_start, l_end - l_start);
+            IF l_value IS NOT NULL THEN
+                PIPE ROW(rec_value_list(l_value));
+            END IF;
+            l_start := l_end + LENGTH(p_separator);
+        END IF;
+    END LOOP;
 
-    out_rec tab_exchange := tab_exchange();
-    l_cur   SYS_REFCURSOR;
-                  
-  BEGIN
-
-    OPEN l_cur FOR
+    RETURN;
     
-        SELECT tt.r030, tt.txt, tt.rate, tt.cur, TO_DATE(tt.exchangedate, 'dd.mm.yyyy') AS exchangedate
-              FROM (SELECT get_needed_curr(p_valcode => p_currency,p_date => p_exchangedate) AS json_value FROM dual) 
-              CROSS JOIN json_table
-            (
-                json_value, '$[*]'
-                  COLUMNS
-                  (
-                    r030           NUMBER        PATH '$.r030',
-                    txt            VARCHAR2(100) PATH '$.txt',
-                    rate           NUMBER        PATH '$.rate',
-                    cur            VARCHAR2(100) PATH '$.cc',
-                    exchangedate   VARCHAR2(100) PATH '$.exchangedate'
-                  )
-            ) TT;
-        
-        BEGIN
-        
-            LOOP
-                EXIT WHEN l_cur%NOTFOUND;
-                FETCH l_cur BULK COLLECT
-                    INTO out_rec;
-                    FOR i IN 1 .. out_rec.count LOOP
-                        PIPE ROW(out_rec(i));
-                    END LOOP;
-            END LOOP;
-            CLOSE l_cur;
-        
-        EXCEPTION 
-            WHEN OTHERS THEN
-                IF (l_cur%ISOPEN) THEN
-                    CLOSE l_cur;
-                    RAISE;
-                ELSE
-                   RAISE;
-                END IF;
-        END;
-
-   END get_currency;  
+END table_from_list;
 
 
+FUNCTION get_currency(
+    p_currency     IN VARCHAR2 DEFAULT 'USD',
+    p_exchangedate IN DATE DEFAULT SYSDATE
+) RETURN tab_exchange PIPELINED IS
+
+BEGIN
+    FOR rec IN (
+        SELECT r030, txt, rate, cur, TO_DATE(exchangedate, 'dd.mm.yyyy') AS exchangedate
+        FROM (
+            SELECT get_needed_curr(p_valcode => p_currency, p_date => p_exchangedate) AS json_value
+            FROM dual
+        ),
+        json_table(
+            json_value, '$[*]'
+            COLUMNS (
+                r030           NUMBER        PATH '$.r030',
+                txt            VARCHAR2(100) PATH '$.txt',
+                rate           NUMBER        PATH '$.rate',
+                cur            VARCHAR2(100) PATH '$.cc',
+                exchangedate   VARCHAR2(100) PATH '$.exchangedate'
+            )
+        ) TT
+    ) LOOP
+        PIPE ROW(rec);
+    END LOOP;
+    
+END get_currency;
+    
+ 
  PROCEDURE copy_table(p_source_scheme IN VARCHAR2,
                       p_target_scheme IN VARCHAR2 DEFAULT USER,
                       p_list_table    IN VARCHAR2,
@@ -551,5 +532,6 @@ BEGIN
     
 END api_nbu_sync;
 
-
+     
 END util;
+
