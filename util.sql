@@ -1,4 +1,4 @@
-CREATE OR REPLACE PACKAGE UTIL IS
+create or replace PACKAGE UTIL IS
     
     gc_min_salary CONSTANT NUMBER := 2000;
     gc_percent_of_min_salary CONSTANT NUMBER := 1.5;
@@ -51,7 +51,8 @@ CREATE OR REPLACE PACKAGE UTIL IS
                                         p_commission_pct     IN VARCHAR2 DEFAULT NULL,
                                         p_manager_id         IN NUMBER DEFAULT NULL,
                                         p_department_id      IN NUMBER DEFAULT NULL);
-
+     
+     --PROCEDURE api_nbu_sync;     
 
      TYPE rec_value_list IS RECORD (value_list VARCHAR2(100));
      TYPE tab_value_list IS TABLE OF rec_value_list;
@@ -68,12 +69,13 @@ CREATE OR REPLACE PACKAGE UTIL IS
 
      FUNCTION get_currency(p_currency     IN VARCHAR2 DEFAULT 'USD',
                            p_exchangedate IN DATE DEFAULT SYSDATE) RETURN tab_exchange PIPELINED;
-
+                           
      PROCEDURE copy_table(p_source_scheme IN VARCHAR2,
                           p_target_scheme IN VARCHAR2 DEFAULT USER,
                           p_list_table    IN VARCHAR2,
                           p_copy_data     IN BOOLEAN DEFAULT FALSE,
                           po_result       OUT VARCHAR); 
                                            
-
+     PROCEDURE api_nbu_sync;
+                                                 
 END util;
