@@ -457,5 +457,68 @@ EXCEPTION
    END get_currency;  
 
 
+ PROCEDURE copy_table(p_source_scheme IN VARCHAR2,
+                      p_target_scheme IN VARCHAR2 DEFAULT USER,
+                      p_list_table    IN VARCHAR2,
+                      p_copy_data     IN BOOLEAN DEFAULT FALSE,
+                      po_result       OUT VARCHAR) 
+ AS
+    CURSOR c_tables IS
+        SELECT table_name, 
+               'CREATE TABLE ' || p_target_scheme || '.' || table_name || ' (' ||
+               LISTAGG(column_name || ' ' || data_type || count_symbol, ', ') WITHIN GROUP (ORDER BY column_id) || ')' AS ddl_code
+        FROM (
+            SELECT table_name,
+                   column_name,
+                   data_type,
+                   CASE
+                       WHEN data_type = 'VARCHAR2' THEN '(' || data_length || ')'
+                       WHEN data_type = 'DATE' THEN NULL
+                       WHEN data_type = 'NUMBER' THEN REPLACE('(' || data_precision || ',' || data_scale || ')', '(,)', NULL)
+                   END AS count_symbol,
+                   column_id
+            FROM all_tab_columns
+            WHERE owner = UPPER(p_source_scheme)
+              AND table_name IN (SELECT * FROM TABLE(table_from_list(p_list_table)))
+            ORDER BY table_name, column_id
+        )
+        GROUP BY table_name;
+    
+    v_ddl_code  VARCHAR2(4000);  -- Для збереження згенерованого DDL
+    v_sql       VARCHAR2(4000);  -- Для динамічних запитів
+    
+BEGIN
+    to_log('COPY_TABLE', 'Старт копіювання таблиць з схеми ' || p_source_scheme || ' в схему ' || p_target_scheme);
+
+    FOR r_table IN c_tables LOOP
+        BEGIN
+            v_ddl_code := r_table.ddl_code;
+
+            EXECUTE IMMEDIATE v_ddl_code;
+
+            to_log('COPY_TABLE', 'Таблиця ' || r_table.table_name || ' успішно створена.');
+
+            IF p_copy_data THEN
+                -- Копіювання даних, якщо вказано p_copy_data = TRUE
+                v_sql := 'INSERT INTO ' || p_target_scheme || '.' || r_table.table_name || 
+                         ' SELECT * FROM ' || p_source_scheme || '.' || r_table.table_name;
+                
+                EXECUTE IMMEDIATE v_sql;
+                
+                to_log('COPY_TABLE', 'Дані успішно скопійовані для таблиці ' || r_table.table_name || '.');
+            END IF;
+
+        EXCEPTION
+            WHEN OTHERS THEN
+                to_log('COPY_TABLE', 'Помилка при створенні таблиці ' || r_table.table_name || ': ' || SQLERRM);
+                CONTINUE; 
+        END;
+    END LOOP;
+
+    to_log('COPY_TABLE', 'Копіювання таблиць завершено.');
+    po_result := 'Копіювання завершено успішно.';
+        
+END copy_table;  
+
 
 END util;
