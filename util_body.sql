@@ -509,8 +509,7 @@ BEGIN
 
         SELECT value_text INTO v_list_currencies
         FROM sys_params
-        WHERE param_name = 'list_currencies'
-          AND param_descr = 'Список валют для синхронізації в процедурі util.api_nbu_sync';
+        WHERE param_name = 'list_currencies';
 
         -- Цикл по валютам
         FOR rec IN (SELECT value_list AS curr FROM TABLE(util.table_from_list(v_list_currencies))) LOOP
