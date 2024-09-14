@@ -1,0 +1,12 @@
+BEGIN
+   DBMS_SCHEDULER.create_job (
+      job_name        => 'JOB_API_NBU_SYNC',
+      job_type        => 'PLSQL_BLOCK',
+      job_action      => 'BEGIN util.api_nbu_sync; END;',
+      start_date      => SYSTIMESTAMP, 
+      repeat_interval => 'FREQ=DAILY; BYHOUR=6; BYMINUTE=0; BYSECOND=0',
+      enabled         => TRUE,
+      auto_drop       => FALSE,
+      comments        => 'Оновлювлення даних в таблиці cur_exchange кожен день о 6 ранку.'
+   );
+END;
